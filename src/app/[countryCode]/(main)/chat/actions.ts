@@ -3,6 +3,7 @@
 import { getOrSetCart } from "@lib/data/cart"
 import { getCartId, getCacheTag } from "@lib/data/cookies"
 import { revalidateTag } from "next/cache"
+import { revalidatePath } from "next/cache"
 
 export async function initializeCart(countryCode: string) {
   try {
@@ -19,6 +20,10 @@ export async function refreshCart() {
   try {
     const cartCacheTag = await getCacheTag("carts")
     revalidateTag(cartCacheTag)
+
+    // Also revalidate the cart path to update the UI
+    revalidatePath("/[countryCode]/cart", "page")
+
     return { success: true }
   } catch (error) {
     console.error("Failed to refresh cart:", error)
