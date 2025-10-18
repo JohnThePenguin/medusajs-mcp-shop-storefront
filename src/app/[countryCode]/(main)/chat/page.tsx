@@ -20,6 +20,25 @@ export default function ChatPage() {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Load messages from localStorage on mount
+  useEffect(() => {
+    const savedMessages = localStorage.getItem("chat_messages");
+    if (savedMessages) {
+      try {
+        setMessages(JSON.parse(savedMessages));
+      } catch (e) {
+        console.error("Failed to load messages from localStorage", e);
+      }
+    }
+  }, []);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem("chat_messages", JSON.stringify(messages));
+    }
+  }, [messages]);
+
   const sendMessage = async () => {
       const response = await fetch("http://localhost:9000/store/chat", {
         method: "POST",
@@ -47,6 +66,26 @@ export default function ChatPage() {
     setLoading(false);
   }
 
+  const clearChat = async () => {
+    // Clear localStorage
+    localStorage.removeItem("chat_messages");
+
+    // Clear local state
+    setMessages([]);
+    setInput("");
+
+    // Clear server-side conversation history
+    try {
+      await fetch("http://localhost:9000/store/chat", {
+        method: "DELETE",
+        credentials: 'include',
+        headers: { "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "" },
+      });
+    } catch (error) {
+      console.error("Failed to clear server conversation", error);
+    }
+  }
+
   useEffect(() => {
     containerRef.current?.scrollTo({
       top: containerRef.current.scrollHeight,
@@ -57,9 +96,14 @@ export default function ChatPage() {
   return (
     <Container className="py-8">
       <div className="max-w-3xl mx-auto">
-        <Heading level="h1" className="mb-6">
-          Shop Assistant
-        </Heading>
+        <div className="flex justify-between items-center mb-6">
+          <Heading level="h1">
+            Shop Assistant
+          </Heading>
+          <Button variant="secondary" size="small" onClick={clearChat} disabled={loading}>
+            New Chat
+          </Button>
+        </div>
 
         <div ref={containerRef} className="bg-ui-bg-subtle rounded-lg p-4 mb-4 h-[500px] overflow-y-auto">
           {messages.length === 0 && (
