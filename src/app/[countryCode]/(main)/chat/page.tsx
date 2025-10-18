@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Button, Container, Heading, Input, Text } from "@medusajs/ui";
 import { ArrowRight } from "@medusajs/icons";
+import Image from "next/image";
+import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 
 type Message = {
   role: "user" | "assistant";
@@ -20,6 +23,7 @@ export default function ChatPage() {
   const sendMessage = async () => {
       const response = await fetch("http://localhost:9000/store/chat", {
         method: "POST",
+        credentials: 'include',
         headers: { "Content-Type": "application/json", "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "" },
         body: JSON.stringify({
           message: input,
@@ -78,12 +82,57 @@ export default function ChatPage() {
                     : "bg-ui-bg-base border border-ui-border-base"
                 }`}
               >
-                <Text
-                  size="small"
-                  className={message.role === "user" ? "text-ui-fg-on-color" : ""}
+                <div
+                  className={`prose prose-sm max-w-none ${
+                    message.role === "user"
+                      ? "prose-invert"
+                      : "prose-slate"
+                  }`}
                 >
-                  {message.content}
-                </Text>
+                  <ReactMarkdown
+                    components={{
+                      // Custom link renderer
+                      a: ({ node, ...props }) => (
+                        <Link
+                          href={props.href || "#"}
+                          className="text-blue-600 hover:text-blue-800 underline"
+                          target={props.href?.startsWith('http') ? '_blank' : undefined}
+                          rel={props.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                        >
+                          {props.children}
+                        </Link>
+                      ),
+                      // Custom image renderer
+                      img: ({ node, ...props }) => (
+                        <Image
+                          src={props.src || ""}
+                          alt={props.alt || "Product"}
+                          width={200}
+                          height={200}
+                          className="rounded-md object-cover my-2"
+                          unoptimized
+                        />
+                      ),
+                      // Custom paragraph renderer
+                      p: ({ node, ...props }) => (
+                        <p className="text-sm mb-2 last:mb-0" {...props} />
+                      ),
+                      // Custom list renderer
+                      ul: ({ node, ...props }) => (
+                        <ul className="text-sm list-disc list-inside mb-2" {...props} />
+                      ),
+                      ol: ({ node, ...props }) => (
+                        <ol className="text-sm list-decimal list-inside mb-2" {...props} />
+                      ),
+                      // Custom code renderer
+                      code: ({ node, ...props }) => (
+                        <code className="text-xs bg-ui-bg-subtle px-1 py-0.5 rounded" {...props} />
+                      ),
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                </div>
               </div>
             </div>
           ))}
