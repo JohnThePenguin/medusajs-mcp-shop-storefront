@@ -1,4 +1,4 @@
-import ChatClient from "./chat-client"
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Button, Container, Heading, Input, Text } from "@medusajs/ui";
