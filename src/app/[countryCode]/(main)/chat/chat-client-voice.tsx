@@ -18,6 +18,25 @@ type ChatClientProps = {
 
 const BACKEND_URL = "http://localhost:9000";
 
+function transformUrl(urlStr: string): string {
+  const url = new URL(urlStr);
+  let parts = url.pathname.split("/").filter(Boolean); // ['dk', 'chat']
+
+  if (parts.length > 1) {
+    // replace the last segment ('chat') with 'checkout'
+    parts = [parts[0], 'checkout'];
+  } else {
+    // fallback if the URL doesn't have a second part
+    parts.push("checkout");
+  }
+
+  url.pathname = "/" + parts.join("/");
+  url.search = "?step=address";
+
+  return url.toString();
+}
+
+
 export default function ChatClient({ countryCode }: ChatClientProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -130,6 +149,14 @@ export default function ChatClient({ countryCode }: ChatClientProps) {
       }
 
       const data: ChatResponse = await response.json();
+
+      console.log("Chat response:", data);
+      if(data.response.includes("Order created successfully")) {
+          console.log("Redirecting to checkout...");
+          console.log(transformUrl(document.location.href));
+          document.location.href = transformUrl(document.location.href);
+          return;
+      };
 
       const assistantMessage: Message = {
         role: "assistant",
@@ -309,7 +336,7 @@ export default function ChatClient({ countryCode }: ChatClientProps) {
                         />
                       ),
                       p: ({ node, ...props }) => (
-                        <p className="text-sm mb-2 last:mb-0" {...props} />
+                        <p className="text-sm mb-2 last:mb-0" {...props} style={message.role == "user" ? { color: "white" } : {}} />
                       ),
                       ul: ({ node, ...props }) => (
                         <ul className="text-sm list-disc list-inside mb-2" {...props} />
