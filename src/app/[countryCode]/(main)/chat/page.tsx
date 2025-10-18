@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button, Container, Heading, Input, Text } from "@medusajs/ui";
 import { ArrowRight } from "@medusajs/icons";
 
@@ -15,14 +15,20 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [cartId, setCartId] = useState<string | null>(null);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const sendMessage = async () => {
       const response = await fetch("http://localhost:9000/store/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Publishible-Key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "" },
+        headers: { "Content-Type": "application/json", "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "" },
         body: JSON.stringify({
           message: input,
         }),
       });
+      const data = await response.json();
+      if(data.response){
+        setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
+      }
   };
 
   const submit = async () => {
@@ -37,6 +43,13 @@ export default function ChatPage() {
     setLoading(false);
   }
 
+  useEffect(() => {
+    containerRef.current?.scrollTo({
+      top: containerRef.current.scrollHeight,
+      behavior: "smooth", // or "auto" for instant scroll
+    });
+  }, [messages]);
+
   return (
     <Container className="py-8">
       <div className="max-w-3xl mx-auto">
@@ -44,7 +57,7 @@ export default function ChatPage() {
           Shop Assistant
         </Heading>
 
-        <div className="bg-ui-bg-subtle rounded-lg p-4 mb-4 h-[500px] overflow-y-auto">
+        <div ref={containerRef} className="bg-ui-bg-subtle rounded-lg p-4 mb-4 h-[500px] overflow-y-auto">
           {messages.length === 0 && (
             <Text className="text-ui-fg-muted">
               Welcome! Ask me to list products, show your cart, or add items to cart.
