@@ -5,7 +5,7 @@ import { Button, Container, Heading, Input, Text } from "@medusajs/ui";
 import { ArrowRight } from "@medusajs/icons";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { initializeCart } from "./actions";
+import { initializeCart, refreshCart } from "./actions";
 
 type Message = {
   role: "user" | "assistant";
@@ -53,6 +53,8 @@ export default function ChatClient({ countryCode }: ChatClientProps) {
     const data = await response.json();
     if (data.response) {
       setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
+      // Refresh cart cache after backend may have modified it
+      await refreshCart();
     }
   };
 

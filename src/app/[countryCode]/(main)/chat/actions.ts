@@ -1,7 +1,8 @@
 "use server"
 
 import { getOrSetCart } from "@lib/data/cart"
-import { getCartId } from "@lib/data/cookies"
+import { getCartId, getCacheTag } from "@lib/data/cookies"
+import { revalidateTag } from "next/cache"
 
 export async function initializeCart(countryCode: string) {
   try {
@@ -11,5 +12,16 @@ export async function initializeCart(countryCode: string) {
   } catch (error) {
     console.error("Failed to initialize cart:", error)
     return { success: false, cartId: null }
+  }
+}
+
+export async function refreshCart() {
+  try {
+    const cartCacheTag = await getCacheTag("carts")
+    revalidateTag(cartCacheTag)
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to refresh cart:", error)
+    return { success: false }
   }
 }
