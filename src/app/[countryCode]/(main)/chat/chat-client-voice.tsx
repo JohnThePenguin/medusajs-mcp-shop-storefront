@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Button, Container, Heading, Input, Text, Switch, Label } from "@medusajs/ui";
 import { ArrowRight } from "@medusajs/icons";
+import Image from "next/image";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { initializeCart, refreshCart } from "./actions";
 import { Message, ChatResponse, TranscribeResponse } from "./types";
 import { useAudioRecorder } from "./useAudioRecorder";
@@ -35,6 +36,26 @@ export default function ChatClient({ countryCode }: ChatClientProps) {
     stopRecording,
     cancelRecording,
   } = useAudioRecorder();
+
+  // Load messages from localStorage on mount
+  useEffect(() => {
+    const savedMessages = localStorage.getItem("chat_messages");
+    if (savedMessages) {
+      try {
+        const parsed = JSON.parse(savedMessages);
+        setMessages(parsed);
+      } catch (e) {
+        console.error("Failed to load messages from localStorage", e);
+      }
+    }
+  }, []);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem("chat_messages", JSON.stringify(messages));
+    }
+  }, [messages]);
 
   // Initialize cart on mount
   useEffect(() => {
@@ -168,6 +189,28 @@ export default function ChatClient({ countryCode }: ChatClientProps) {
     }
   };
 
+  const clearChat = async () => {
+    // Clear localStorage
+    localStorage.removeItem("chat_messages");
+
+    // Clear local state
+    setMessages([]);
+    setInput("");
+
+    // Clear server-side conversation history
+    try {
+      await fetch(`${BACKEND_URL}/store/chat`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: {
+          "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
+        },
+      });
+    } catch (error) {
+      console.error("Failed to clear server conversation", error);
+    }
+  };
+
   useEffect(() => {
     containerRef.current?.scrollTo({
       top: containerRef.current.scrollHeight,
@@ -181,15 +224,25 @@ export default function ChatClient({ countryCode }: ChatClientProps) {
         <div className="flex items-center justify-between mb-6">
           <Heading level="h1">Shop Assistant</Heading>
 
-          <div className="flex items-center gap-2">
-            <Label htmlFor="voice-mode" className="text-small">
-              Voice Mode
-            </Label>
-            <Switch
-              id="voice-mode"
-              checked={voiceMode}
-              onCheckedChange={setVoiceMode}
-            />
+          <div className="flex items-center gap-4">
+            <Button
+              variant="secondary"
+              size="small"
+              onClick={clearChat}
+              disabled={loading}
+            >
+              New Chat
+            </Button>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="voice-mode" className="text-small">
+                Voice Mode
+              </Label>
+              <Switch
+                id="voice-mode"
+                checked={voiceMode}
+                onCheckedChange={setVoiceMode}
+              />
+            </div>
           </div>
         </div>
 
@@ -227,13 +280,48 @@ export default function ChatClient({ countryCode }: ChatClientProps) {
                 }`}
               >
                 <div
-                  className={`text-small prose prose-sm max-w-none ${
+                  className={`prose prose-sm max-w-none ${
                     message.role === "user"
-                      ? "text-ui-fg-on-color prose-invert"
+                      ? "prose-invert"
                       : "prose-slate"
                   }`}
                 >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <ReactMarkdown
+                    components={{
+                      a: ({ node, ...props }) => (
+                        <Link
+                          href={props.href || "#"}
+                          className="text-blue-600 hover:text-blue-800 underline"
+                          target={props.href?.startsWith("http") ? "_blank" : undefined}
+                          rel={props.href?.startsWith("http") ? "noopener noreferrer" : undefined}
+                        >
+                          {props.children}
+                        </Link>
+                      ),
+                      img: ({ node, ...props }) => (
+                        <Image
+                          src={props.src || ""}
+                          alt={props.alt || "Product"}
+                          width={200}
+                          height={200}
+                          className="rounded-md object-cover my-2"
+                          unoptimized
+                        />
+                      ),
+                      p: ({ node, ...props }) => (
+                        <p className="text-sm mb-2 last:mb-0" {...props} />
+                      ),
+                      ul: ({ node, ...props }) => (
+                        <ul className="text-sm list-disc list-inside mb-2" {...props} />
+                      ),
+                      ol: ({ node, ...props }) => (
+                        <ol className="text-sm list-decimal list-inside mb-2" {...props} />
+                      ),
+                      code: ({ node, ...props }) => (
+                        <code className="text-xs bg-ui-bg-subtle px-1 py-0.5 rounded" {...props} />
+                      ),
+                    }}
+                  >
                     {message.content}
                   </ReactMarkdown>
                 </div>
