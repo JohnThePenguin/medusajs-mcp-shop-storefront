@@ -150,14 +150,6 @@ export default function ChatClient({ countryCode }: ChatClientProps) {
             <ArrowRight />
           </Button>
         </div>
-
-        {cartId && (
-          <div className="mt-4 p-4 bg-ui-bg-subtle rounded-lg">
-            <Text size="small" className="text-ui-fg-muted">
-              Cart ID: {cartId}
-            </Text>
-          </div>
-        )}
       </div>
     </Container>
   );

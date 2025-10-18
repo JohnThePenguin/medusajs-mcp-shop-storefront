@@ -1,4 +1,4 @@
-import ChatClient from "./chat-client"
+import ChatClient from "./chat-client-voice"
 
 export default async function ChatPage({
   params,
