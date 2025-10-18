@@ -15,56 +15,17 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [cartId, setCartId] = useState<string | null>(null);
 
-  // Initialize cart on mount
-  useEffect(() => {
-    const storedCartId = localStorage.getItem("cart_id");
-    if (!storedCartId) {
-      // Create a new cart
-      createCart();
-    } else {
-      setCartId(storedCartId);
-    }
-  }, []);
-
-  const createCart = async () => {
-    try {
-      const response = await fetch("http://localhost:9000/api/chat", {
+  const sendMessage = async () => {
+      const response = await fetch("http://localhost:9000/store/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Publishible-Key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "" },
         body: JSON.stringify({
-          tool: "create_cart",
-          arguments: {},
+          message: input,
         }),
       });
-
-      const data = await response.json();
-      if (data.cart?.id) {
-        localStorage.setItem("cart_id", data.cart.id);
-        setCartId(data.cart.id);
-      }
-    } catch (error) {
-      console.error("Failed to create cart:", error);
-    }
   };
 
-  const callTool = async (tool: string, args: any) => {
-    const response = await fetch("http://localhost:9000/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tool,
-        arguments: args,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`);
-    }
-
-    return response.json();
-  };
-
-  const handleSend = async () => {
+  const submit = async () => {
     if (!input.trim()) return;
 
     const userMessage = input.trim();
@@ -72,88 +33,9 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setLoading(true);
 
-    try {
-      // Simple command parsing
-      let response;
-      let assistantMessage = "";
-
-      if (userMessage.toLowerCase().includes("list products") || userMessage.toLowerCase().includes("show products")) {
-        const searchMatch = userMessage.match(/search[:\s]+([^\s]+)/i);
-        const search = searchMatch ? searchMatch[1] : undefined;
-
-        response = await callTool("list_products", {
-          search,
-          limit: 5,
-        });
-
-        assistantMessage = `Found ${response.count} products:\n\n`;
-        response.products.forEach((product: any) => {
-          assistantMessage += `- ${product.title}\n`;
-        });
-      } else if (userMessage.toLowerCase().includes("show cart") || userMessage.toLowerCase().includes("view cart")) {
-        if (!cartId) {
-          assistantMessage = "No cart available. Creating one...";
-          await createCart();
-        } else {
-          response = await callTool("list_cart_products", {
-            cartId,
-          });
-
-          if (response.items.length === 0) {
-            assistantMessage = "Your cart is empty.";
-          } else {
-            assistantMessage = `Cart contents (${response.total_items} items):\n\n`;
-            response.items.forEach((item: any) => {
-              assistantMessage += `- ${item.title} x${item.quantity}\n`;
-            });
-          }
-        }
-      } else if (userMessage.toLowerCase().includes("add to cart")) {
-        // Example: "add to cart variant_123 quantity 2"
-        const variantMatch = userMessage.match(/variant[_:]?\s*([^\s]+)/i);
-        const quantityMatch = userMessage.match(/quantity[:\s]+(\d+)/i);
-
-        if (!variantMatch) {
-          assistantMessage = "Please specify a variant ID. Example: 'add to cart variant_123 quantity 2'";
-        } else if (!cartId) {
-          assistantMessage = "No cart available. Creating one...";
-          await createCart();
-        } else {
-          response = await callTool("update_cart", {
-            cartId,
-            action: "add",
-            variantId: variantMatch[1],
-            quantity: quantityMatch ? parseInt(quantityMatch[1]) : 1,
-          });
-
-          assistantMessage = `Added item to cart successfully!`;
-        }
-      } else {
-        assistantMessage = `I can help you with:
-- "list products" or "show products"
-- "show cart" or "view cart"
-- "add to cart variant_ID quantity N"
-
-Try one of these commands!`;
-      }
-
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: assistantMessage },
-      ]);
-    } catch (error) {
-      console.error("Error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    await sendMessage();
+    setLoading(false);
+  }
 
   return (
     <Container className="py-8">
@@ -204,17 +86,20 @@ Try one of these commands!`;
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="gap-2 w-full flex">
+          <div className="flex-1" >
           <Input
             type="text"
             placeholder="Type a command..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && !loading && handleSend()}
+            onKeyPress={(e) => e.key === "Enter" && !loading && submit()}
             disabled={loading}
-            className="flex-1"
+            // className="flex-1"
+            style={{flex: 1}}
           />
-          <Button onClick={handleSend} disabled={loading || !input.trim()}>
+          </div>
+          <Button onClick={submit} disabled={loading || !input.trim()}>
             <ArrowRight />
           </Button>
         </div>
